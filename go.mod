@@ -1,4 +1,4 @@
-module github.com/inpher/caddy-consul
+module github.com/unixfox/caddy-consul
 
 go 1.25
 
