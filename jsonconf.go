@@ -77,8 +77,7 @@ func (cc *App) generateHTTPAndTLSAppConfFromConsulServices(conf *caddy.Config) (
 				Listen: []string{
 					fmt.Sprintf(":%d", cc.AutoReverseProxy.DefaultHTTPServerOptions.HTTPSPort),
 				},
-				Routes:   caddyhttp.RouteList{cc.getAuthRoute()},
-				AllowH2C: true,
+				Routes: caddyhttp.RouteList{cc.getAuthRoute()},
 			},
 		},
 	}
@@ -93,8 +92,8 @@ func (cc *App) generateHTTPAndTLSAppConfFromConsulServices(conf *caddy.Config) (
 	// If the authentication is enabled, we need to handle the certificates for the authentication domain too
 	if cc.AutoReverseProxy.AuthenticationConfiguration.Enabled {
 		tlsConf.Automation.Policies = append(tlsConf.Automation.Policies, &caddytls.AutomationPolicy{
-			Subjects:   []string{cc.AutoReverseProxy.AuthenticationConfiguration.AuthenticationDomain},
-			IssuersRaw: cc.AutoReverseProxy.TLSIssuers,
+			SubjectsRaw: []string{cc.AutoReverseProxy.AuthenticationConfiguration.AuthenticationDomain},
+			IssuersRaw:  cc.AutoReverseProxy.TLSIssuers,
 		})
 	}
 
@@ -110,12 +109,20 @@ func (cc *App) generateHTTPAndTLSAppConfFromConsulServices(conf *caddy.Config) (
 		upstreams, options := parseConsulService(instances)
 
 		// Let's start by instantiating the reverse-proxy handler
+		// Calculate buffer sizes based on boolean flags and max buffer size
+		var requestBuffers, responseBuffers int64
+		if options.BufferRequests && options.MaxBufferSize > 0 {
+			requestBuffers = int64(options.MaxBufferSize)
+		}
+		if options.BufferResponses && options.MaxBufferSize > 0 {
+			responseBuffers = int64(options.MaxBufferSize)
+		}
+		
 		reverseProxyHandler := &reverseproxy.Handler{
 			Upstreams:       upstreams,
 			FlushInterval:   caddy.Duration(options.FlushInterval),
-			BufferRequests:  options.BufferRequests,
-			BufferResponses: options.BufferResponses,
-			MaxBufferSize:   int64(options.MaxBufferSize),
+			RequestBuffers:  requestBuffers,
+			ResponseBuffers: responseBuffers,
 			Headers: &headers.Handler{
 				Request: &headers.HeaderOps{Add: http.Header{}},
 				Response: &headers.RespHeaderOps{
@@ -207,8 +214,8 @@ func (cc *App) generateHTTPAndTLSAppConfFromConsulServices(conf *caddy.Config) (
 
 		// Let's prepare the TLS app part for this website
 		tlsConf.Automation.Policies = append(tlsConf.Automation.Policies, &caddytls.AutomationPolicy{
-			Subjects:   hostnames,
-			IssuersRaw: cc.AutoReverseProxy.TLSIssuers,
+			SubjectsRaw: hostnames,
+			IssuersRaw:  cc.AutoReverseProxy.TLSIssuers,
 		})
 
 		// And now, let's build the handlers!
