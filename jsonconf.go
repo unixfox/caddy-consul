@@ -117,7 +117,7 @@ func (cc *App) generateHTTPAndTLSAppConfFromConsulServices(conf *caddy.Config) (
 		if options.BufferResponses && options.MaxBufferSize > 0 {
 			responseBuffers = int64(options.MaxBufferSize)
 		}
-		
+
 		reverseProxyHandler := &reverseproxy.Handler{
 			Upstreams:       upstreams,
 			FlushInterval:   caddy.Duration(options.FlushInterval),
